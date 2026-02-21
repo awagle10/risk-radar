@@ -2,6 +2,17 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 import plotly.express as px
+from model.predict_cluster import predict_behavior_cluster
+from utils.simulation import run_monte_carlo_simulation, compute_var_es
+from utils.interpretation import generate_behavior_insight
+
+from utils.risk_metrics import (
+    load_price_data,
+    compute_daily_returns,
+    compute_portfolio_volatility,
+    compute_hhi,
+    compute_correlation_exposure
+)
 
 st.set_page_config(
     page_title="Behavioral Risk Radar",
@@ -42,15 +53,48 @@ if selected_assets:
 
     if total_weight != 100:
         st.sidebar.warning("⚠️ Total weight must equal 100%")
+    
+    prices = load_price_data()
+    returns = compute_daily_returns(prices)
+
+    portfolio_vol = compute_portfolio_volatility(weights, returns)
+    hhi = compute_hhi(weights)
+    corr_exposure = compute_correlation_exposure(weights, returns)
+
+    cluster_id = predict_behavior_cluster(hhi, portfolio_vol, corr_exposure)
+
+cluster_labels = {
+    0: "Diversified Long-Term Investor",
+    1: "Concentrated Risk Taker",
+    2: "Momentum-Driven Allocator",
+    3: "Balanced Growth Seeker"
+}
+
+behavior_label = cluster_labels.get(cluster_id, "Unknown Profile")
+
+summary_text, insight_list = generate_behavior_insight(
+    hhi,
+    portfolio_vol,
+    corr_exposure,
+    behavior_label
+)
 
 # -----------------------------
 # Main Title
 # -----------------------------
 
 st.title("🧠 Behavioral Risk Radar")
-st.markdown(
-    "AI-powered behavioral risk profiling and stress testing for retail investors."
-)
+
+st.markdown("""
+This AI-powered feature evaluates your portfolio's structural risk profile 
+by combining quantitative metrics, clustering models, and stress simulations.
+
+**What it does:**
+- Measures diversification and concentration
+- Classifies behavioral risk profile
+- Simulates forward stress scenarios
+- Generates portfolio-level insights
+""")
 
 # -----------------------------
 # Tabs
@@ -69,9 +113,9 @@ with tab1:
 
     col1, col2, col3 = st.columns(3)
 
-    col1.metric("Portfolio Volatility", "15.2%")
-    col2.metric("Concentration Index", "0.28")
-    col3.metric("Behavior Cluster", "Diversified Investor")
+    col1.metric("Annualized Volatility", f"{portfolio_vol:.2%}")
+    col2.metric("Concentration (HHI)", f"{hhi:.3f}")
+    col3.metric("Behavior Profile", behavior_label)
 
     if selected_assets:
         df = pd.DataFrame({
@@ -89,19 +133,28 @@ with tab1:
 with tab2:
     st.header("Risk Radar")
 
-    radar_data = pd.DataFrame({
-        "Metric": ["Volatility", "Concentration", "Correlation", "Sector Risk"],
-        "Score": [0.6, 0.4, 0.5, 0.7]
-    })
+    if selected_assets and total_weight == 100:
 
-    fig = px.line_polar(
-        radar_data,
-        r="Score",
-        theta="Metric",
-        line_close=True
-    )
+        normalized_vol = min(portfolio_vol / 0.4, 1)
+        normalized_hhi = min(hhi, 1)
+        normalized_corr = min(max(corr_exposure, 0), 1)
 
-    st.plotly_chart(fig, use_container_width=True)
+        radar_data = pd.DataFrame({
+            "Metric": ["Volatility", "Concentration", "Correlation"],
+            "Score": [normalized_vol, normalized_hhi, normalized_corr]
+        })
+
+        fig = px.line_polar(
+            radar_data,
+            r="Score",
+            theta="Metric",
+            line_close=True
+        )
+
+        fig.update_traces(fill='toself')
+        fig.update_layout(title="Normalized Risk Profile")
+
+        st.plotly_chart(fig, use_container_width=True)
 
 # -----------------------------
 # Tab 3 - Stress Test
@@ -110,33 +163,59 @@ with tab2:
 with tab3:
     st.header("Monte Carlo Stress Simulation")
 
-    horizon = st.slider("Time Horizon (Days)", 30, 365, 180)
-    confidence = st.slider("Confidence Level (%)", 90, 99, 95)
+    if selected_assets and total_weight == 100:
 
-    st.metric("Estimated VaR", "-12.4%")
-    st.metric("Expected Shortfall", "-18.7%")
+        horizon = st.slider("Time Horizon (Days)", 30, 365, 180)
+        confidence = st.slider("Confidence Level (%)", 90, 99, 95)
 
-    simulated_returns = np.random.normal(-0.05, 0.1, 1000)
+        with st.spinner("Running Monte Carlo simulation..."):
 
-    fig = px.histogram(simulated_returns, nbins=40)
-    st.plotly_chart(fig, use_container_width=True)
+            simulations = run_monte_carlo_simulation(
+                weights,
+                returns,
+                horizon_days=horizon
+            )
+
+            var, es = compute_var_es(
+                simulations,
+                confidence_level=confidence
+            )
+
+        col1, col2 = st.columns(2)
+
+        col1.metric("Value at Risk (VaR)", f"{var:.2%}")
+        col2.metric("Expected Shortfall (CVaR)", f"{es:.2%}")
+
+        fig = px.histogram(simulations, nbins=50)
+        fig.update_layout(title="Distribution of Simulated Portfolio Returns")
+        st.plotly_chart(fig, use_container_width=True)
 
 # -----------------------------
 # Tab 4 - AI Insights
 # -----------------------------
 
 with tab4:
-    st.header("Behavioral Profile")
+    st.header("Behavioral AI Insights")
 
-    st.success("You are classified as a Diversified Long-Term Investor.")
+    if selected_assets and total_weight == 100:
 
-    st.markdown("""
-    ### Key Observations:
-    - Moderate volatility exposure
-    - Healthy diversification
-    - Limited sector concentration
-    
-    ### Recommendations:
-    - Consider reducing correlation between equity holdings
-    - Increase allocation to defensive assets during volatile periods
-    """)
+        st.success(summary_text)
+
+        st.markdown("### Key Risk Observations")
+
+        for insight in insight_list:
+            st.write(f"- {insight}")
+
+        st.markdown("### Suggested Considerations")
+
+        if hhi > 0.5:
+            st.write("- Consider increasing diversification across sectors or asset classes.")
+
+        if portfolio_vol > 0.25:
+            st.write("- Introduce lower-volatility or defensive assets.")
+
+        if corr_exposure > 0.6:
+            st.write("- Reduce correlation by mixing equities with bonds or commodities.")
+
+        if hhi < 0.3 and portfolio_vol < 0.18:
+            st.write("- Your portfolio structure appears balanced. Monitor periodically.")
