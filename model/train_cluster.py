@@ -4,42 +4,47 @@ from sklearn.cluster import KMeans
 import joblib
 import os
 
+from utils.risk_metrics import (
+    load_price_data,
+    compute_daily_returns,
+    compute_portfolio_volatility,
+    compute_hhi,
+    compute_correlation_exposure
+)
 
 # -----------------------------
-# Generate Synthetic Portfolios
+# Generate Realistic Portfolios
 # -----------------------------
 
-def generate_synthetic_portfolios(n_samples=2000):
-    """
-    Generate synthetic investor risk profiles.
-    Each profile has:
-    - HHI (concentration)
-    - Volatility
-    - Correlation exposure
-    """
+def generate_portfolios(n_samples=3000):
 
-    data = []
+    prices = load_price_data()
+    returns = compute_daily_returns(prices)
+
+    assets = returns.columns.tolist()
+
+    portfolio_data = []
 
     for _ in range(n_samples):
 
-        # Randomly simulate concentration
-        hhi = np.random.uniform(0.15, 1.0)
+        # Random portfolio weights
+        weights_raw = np.random.random(len(assets))
+        weights = weights_raw / weights_raw.sum()
 
-        # Volatility correlated loosely with concentration
-        volatility = np.random.normal(
-            loc=0.15 + 0.2 * hhi,
-            scale=0.05
-        )
+        weights_dict = {
+            asset: weight * 100
+            for asset, weight in zip(assets, weights)
+        }
 
-        volatility = max(0.05, volatility)
+        # Compute risk metrics
+        volatility = compute_portfolio_volatility(weights_dict, returns)
+        hhi = compute_hhi(weights_dict)
+        correlation = compute_correlation_exposure(weights_dict, returns)
 
-        # Correlation exposure loosely related to concentration
-        correlation = np.random.uniform(0.1, 0.9) * hhi
-
-        data.append([hhi, volatility, correlation])
+        portfolio_data.append([hhi, volatility, correlation])
 
     df = pd.DataFrame(
-        data,
+        portfolio_data,
         columns=["HHI", "Volatility", "Correlation"]
     )
 
@@ -52,7 +57,7 @@ def generate_synthetic_portfolios(n_samples=2000):
 
 def train_cluster_model():
 
-    df = generate_synthetic_portfolios()
+    df = generate_portfolios()
 
     X = df[["HHI", "Volatility", "Correlation"]]
 
@@ -63,7 +68,7 @@ def train_cluster_model():
 
     joblib.dump(model, "model/risk_cluster_model.pkl")
 
-    print("Clustering model trained and saved successfully.")
+    print("Clustering model trained successfully.")
 
 
 if __name__ == "__main__":

@@ -5,6 +5,7 @@ import plotly.express as px
 from model.predict_cluster import predict_behavior_cluster
 from utils.simulation import run_monte_carlo_simulation, compute_var_es
 from utils.interpretation import generate_behavior_insight
+from utils.llm_advisor import generate_ai_portfolio_analysis
 
 from utils.risk_metrics import (
     load_price_data,
@@ -219,3 +220,17 @@ with tab4:
 
         if hhi < 0.3 and portfolio_vol < 0.18:
             st.write("- Your portfolio structure appears balanced. Monitor periodically.")
+
+        st.markdown("### AI Portfolio Risk Analysis")
+
+        with st.spinner("Generating AI analysis..."):
+
+             ai_analysis = generate_ai_portfolio_analysis(
+                    portfolio_vol,
+                    hhi,
+                    corr_exposure,
+                    var,
+                    es,
+                    behavior_label)
+
+        st.write(ai_analysis)
