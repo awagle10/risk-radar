@@ -7,17 +7,22 @@ import streamlit as st
 
 @st.cache_data(ttl=300)
 def get_ai_response(prompt, api_key):
-    client = Groq(api_key=api_key)
 
-    response = client.chat.completions.create(
-        model="llama3-70b-8192",
-        messages=[
-            {"role": "user", "content": str(prompt)}
-        ],
-        temperature=0.3
-)
+    try:
+        client = Groq(api_key=api_key)
 
-    return response.choices[0].message.content
+        response = client.chat.completions.create(
+            model="llama3-8b-8192",
+            messages=[
+                {"role": "user", "content": prompt[:4000]}  # 🔴 limit prompt size
+            ],
+            temperature=0.3
+        )
+
+        return response.choices[0].message.content
+
+    except Exception as e:
+        return f"Error: {str(e)}"
 
 
 def generate_ai_portfolio_analysis(
@@ -69,6 +74,9 @@ def generate_ai_portfolio_analysis(
     
     text_output = get_ai_response(prompt, api_key)
 
+    if text_output.startswith("Error") or text_output.startswith("AI temporarily"):
+        return text_output, None
+
     json_match = re.search(r"\{.*\}", text_output, re.DOTALL)
 
     risk_scores = None
@@ -80,6 +88,7 @@ def generate_ai_portfolio_analysis(
             risk_scores = None
                                                     
     return text_output, risk_scores
+
 
 
     
