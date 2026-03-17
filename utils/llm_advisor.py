@@ -2,6 +2,30 @@ import cohere
 import os
 import json
 import re
+import streamlit as st
+
+@st.cache_data(ttl=300)
+def get_ai_response(prompt, api_key):
+    import cohere
+    import time
+
+    co = cohere.Client(api_key)
+
+    try:
+        response = co.generate(
+            model="command",
+            prompt=prompt,
+            max_tokens=800,
+            temperature=0.3
+        )
+        return response.generations[0].text
+
+    except Exception as e:
+        if "TooManyRequests" in str(e):
+            time.sleep(2)
+            return "Rate limit hit. Please wait a few seconds and try again."
+        else:
+            return f"Error: {str(e)}"
 
 
 def generate_ai_portfolio_analysis(
@@ -17,8 +41,6 @@ def generate_ai_portfolio_analysis(
 
     if api_key is None:
         return "LLM analysis unavailable. Please configure COHERE_API_KEY.", None
-
-    co = cohere.Client(api_key)
 
     prompt = f"""
     You are a professional portfolio risk analyst.
@@ -53,16 +75,7 @@ def generate_ai_portfolio_analysis(
     """
 
     
-    
-    
-    response = co.generate(
-        model="command",
-        prompt=prompt,
-        max_tokens=800,
-        temperature=0.3
-)
-
-    text_output = response.generations[0].text
+    text_output = get_ai_response(prompt, api_key)
 
     json_match = re.search(r"\{.*\}", text_output, re.DOTALL)
 
