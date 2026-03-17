@@ -18,7 +18,7 @@ def generate_ai_portfolio_analysis(
     if api_key is None:
         return "LLM analysis unavailable. Please configure COHERE_API_KEY.", None
 
-    co = cohere.ClientV2(api_key)
+    co = cohere.Client(api_key)
 
     prompt = f"""
     You are a professional portfolio risk analyst.
