@@ -53,15 +53,16 @@ def generate_ai_portfolio_analysis(
     """
 
     
-    response = co.chat(
-        model="command-light",
-        message=prompt,
+    
+    
+    response = co.generate(
+        model="command",
+        prompt=prompt,
         max_tokens=800,
         temperature=0.3
 )
 
-
-    text_output = response.text
+    text_output = response.generations[0].text
 
     json_match = re.search(r"\{.*\}", text_output, re.DOTALL)
 
