@@ -12,7 +12,7 @@ def get_ai_response(prompt, api_key):
         client = Groq(api_key=api_key)
 
         response = client.chat.completions.create(
-            model="llama3-8b-8192",
+            model="llama-3.1-8b-instant",
             messages=[
                 {"role": "user", "content": prompt[:4000]}  # 🔴 limit prompt size
             ],
