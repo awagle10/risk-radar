@@ -52,15 +52,17 @@ def generate_ai_portfolio_analysis(
     }}
     """
 
+    
     response = co.chat(
-        model="command-a-03-2025",
-        messages=[{"role": "user", "content": prompt}],
+        model="command",
+        message=prompt,
         max_tokens=800,
-        temperature=0.3)
+        temperature=0.3
+)
 
 
-    text_output = response.message.content[0].text
-
+    text_output = response.text
+    
     json_match = re.search(r"\{.*\}", text_output, re.DOTALL)
 
     risk_scores = None
