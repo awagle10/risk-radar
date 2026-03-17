@@ -10,13 +10,12 @@ def get_ai_response(prompt, api_key):
     client = Groq(api_key=api_key)
 
     response = client.chat.completions.create(
-        model="llama3-8b-8192",  # free + fast
+        model="llama3-8b-8192",
         messages=[
-            {"role": "user", "content": prompt}
+            {"role": "user", "content": str(prompt)}
         ],
-        temperature=0.3,
-        max_tokens=800
-    )
+        temperature=0.3
+)
 
     return response.choices[0].message.content
 
