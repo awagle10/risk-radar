@@ -225,12 +225,33 @@ with tab4:
 
         with st.spinner("Generating AI analysis..."):
 
-             ai_analysis = generate_ai_portfolio_analysis(
-                    portfolio_vol,
-                    hhi,
-                    corr_exposure,
-                    var,
-                    es,
-                    behavior_label)
+             ai_analysis, risk_scores = generate_ai_portfolio_analysis(
+    portfolio_vol,
+    hhi,
+    corr_exposure,
+    var,
+    es,
+    behavior_label
+)
 
         st.write(ai_analysis)
+
+        if risk_scores:
+
+            st.markdown("### AI Risk Scores")
+
+            radar_df = pd.DataFrame({
+                "Metric": list(risk_scores.keys()),
+                "Score": list(risk_scores.values())})
+
+            fig = px.line_polar(
+                radar_df,
+                r="Score",
+                theta="Metric",
+                line_close=True,
+                range_r=[0,10]
+    )
+
+            fig.update_traces(fill='toself')
+
+            st.plotly_chart(fig, use_container_width=True)
