@@ -54,7 +54,7 @@ def generate_ai_portfolio_analysis(
 
     
     response = co.chat(
-        model="command",
+        model="command-light",
         message=prompt,
         max_tokens=800,
         temperature=0.3
@@ -62,7 +62,7 @@ def generate_ai_portfolio_analysis(
 
 
     text_output = response.text
-    
+
     json_match = re.search(r"\{.*\}", text_output, re.DOTALL)
 
     risk_scores = None
