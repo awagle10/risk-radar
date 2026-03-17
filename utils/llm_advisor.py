@@ -1,31 +1,24 @@
-import cohere
+from groq import Groq
 import os
 import json
 import re
 import streamlit as st
 
+
 @st.cache_data(ttl=300)
 def get_ai_response(prompt, api_key):
-    import cohere
-    import time
+    client = Groq(api_key=api_key)
 
-    co = cohere.Client(api_key)
+    response = client.chat.completions.create(
+        model="llama3-8b-8192",  # free + fast
+        messages=[
+            {"role": "user", "content": prompt}
+        ],
+        temperature=0.3,
+        max_tokens=800
+    )
 
-    try:
-        response = co.generate(
-            model="command",
-            prompt=prompt,
-            max_tokens=800,
-            temperature=0.3
-        )
-        return response.generations[0].text
-
-    except Exception as e:
-        if "TooManyRequests" in str(e):
-            time.sleep(2)
-            return "Rate limit hit. Please wait a few seconds and try again."
-        else:
-            return f"Error: {str(e)}"
+    return response.choices[0].message.content
 
 
 def generate_ai_portfolio_analysis(
@@ -37,10 +30,10 @@ def generate_ai_portfolio_analysis(
     cluster_label
 ):
 
-    api_key = os.getenv("COHERE_API_KEY")
+    api_key = os.getenv("GROQ_API_KEY")
 
     if api_key is None:
-        return "LLM analysis unavailable. Please configure COHERE_API_KEY.", None
+        return "LLM analysis unavailable. Please configure GROQ_API_KEY.", None
 
     prompt = f"""
     You are a professional portfolio risk analyst.
